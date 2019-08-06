@@ -2,6 +2,10 @@
 
 A Firefox extension that allows you to open bookmarks in containers.
 
+<a href="https://addons.mozilla.org/en-US/firefox/addon/container-bookmarks/">
+  <img src="https://raw.githubusercontent.com/rafael-gssa/esgst/master/firefox_badge.png" alt="Firefox">
+</a>
+
 ### How does it work?
 
 It is not currently possible to configure bookmarks to open in containers at a bookmark-level, so this extension uses the workaround that was posted by GodKratos [here](https://github.com/mozilla/multi-account-containers/issues/323#issuecomment-495058238), but makes that process much easier and faster.
@@ -24,7 +28,7 @@ Now, every time you go to http://www.social.container/, it will open in a social
 
 1. When you save the bookmark, it will be saved with a fragment appended at the end of the URL to indicate that it is a container bookmark. For example: https://github.com/#container-social
 2. When you open the bookmark, you will navigate to https://github.com/#container-social.
-3. The extension will see that the URL has a `#container-%name%` fragment and will redirect you to `http://www.%name%.container/%original-url`. For example: http://www.social.container/https://github.com/
+3. The extension will see that the URL has a `#container-%name%` fragment and will redirect you to `http://www.%name%.container/%original-url%`. For example: http://www.social.container/https://github.com/
 4. Since http://www.social.container/ is configured to always open in a social container, this means that you will now be in the desired container.
 5. Finally, the extension will redirect you to the original URL, so that you arrive at https://github.com/ in a social container.
 
