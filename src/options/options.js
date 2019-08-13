@@ -1,16 +1,16 @@
 let preferences = {} ;
 
-const form = document.getElementById(`form`);
-const saveButton = document.getElementById(`save-button`);
+const form = document.getElementById('form');
+const saveButton = document.getElementById('save-button');
 
-saveButton.addEventListener(`click`, onSaveButtonClicked);
+saveButton.addEventListener('click', onSaveButtonClicked);
 
 getPreferences();
 
 async function getPreferences() {
   try {
     preferences = await browser.runtime.sendMessage({
-      action: `get-preferences`
+      action: 'get-preferences',
     });
 
     for (const key in preferences) {
@@ -18,16 +18,16 @@ async function getPreferences() {
 
       const id = `${key}-preference`;
 
-      const panelItem = document.createElement(`div`);
-      panelItem.className = `panel-formElements-item`;
+      const panelItem = document.createElement('div');
+      panelItem.className = 'panel-formElements-item';
 
-      const label = document.createElement(`label`);
-      label.setAttribute(`for`, id);
+      const label = document.createElement('label');
+      label.setAttribute('for', id);
       label.textContent = `${preference.name}:`;
 
-      const field = document.createElement(`input`);
+      const field = document.createElement('input');
       field.id = id;
-      field.type = `text`;
+      field.type = 'text';
       field.value = preference.value;
 
       panelItem.appendChild(label);
@@ -35,8 +35,8 @@ async function getPreferences() {
       form.appendChild(panelItem);
 
       if (preference.description) {
-        const section = document.createElement(`div`);
-        section.className = `panel-formElements-section`;
+        const section = document.createElement('div');
+        section.className = 'panel-formElements-section';
         section.textContent = preference.description;
 
         form.appendChild(section);
@@ -44,7 +44,7 @@ async function getPreferences() {
     }
   } catch (error) {
     console.log(error);
-    window.alert(`An error occurred when retrieving preferences. Check the console log for more info.`);
+    window.alert('An error occurred when retrieving preferences. Check the console log for more info.');
   }
 }
 
@@ -57,13 +57,13 @@ async function onSaveButtonClicked() {
     }
 
     await browser.runtime.sendMessage({
-      action: `set-preferences`,
-      preferences: values
+      action: 'set-preferences',
+      preferences: values,
     });
 
-    window.alert(`Preferences saved with success!`);
+    window.alert('Preferences saved with success!');
   } catch (error) {
     console.log(error);
-    window.alert(`An error occurred when saving preferences. Check the console log for more info.`);
+    window.alert('An error occurred when saving preferences. Check the console log for more info.');
   }
 }

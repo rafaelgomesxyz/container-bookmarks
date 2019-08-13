@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Container Bookmarks",
-  "version": "1.0.1",
+  "version": "1.0.2",
 
   "description": "Allows you to open bookmarks in containers.",
 
