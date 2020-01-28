@@ -19,19 +19,35 @@ async function getPreferences() {
       const id = `${key}-preference`;
 
       const panelItem = document.createElement('div');
-      panelItem.className = 'panel-formElements-item';
+      panelItem.className = 'browser-style';
 
       const label = document.createElement('label');
       label.setAttribute('for', id);
-      label.textContent = `${preference.name}:`;
+      label.textContent = preference.name;
 
       const field = document.createElement('input');
       field.id = id;
-      field.type = 'text';
-      field.value = preference.value;
+      field.type = preference.type;
 
-      panelItem.appendChild(label);
-      panelItem.appendChild(field);
+      switch (field.type) {
+        case 'text': {
+          field.value = preference.value;
+
+          panelItem.appendChild(label);
+          panelItem.appendChild(field);
+
+          break;
+        }
+        case 'checkbox': {
+          field.checked = preference.value;
+
+          panelItem.appendChild(field);
+          panelItem.appendChild(label);
+
+          break;
+        }
+      }
+
       form.appendChild(panelItem);
 
       if (preference.description) {
@@ -53,7 +69,19 @@ async function onSaveButtonClicked() {
     const values = {};
     for (const key in preferences) {
       const field = document.getElementById(`${key}-preference`);
-      values[key] = field.value;
+
+      switch (field.type) {
+        case 'text': {
+          values[key] = field.value;
+
+          break;
+        }
+        case 'checkbox': {
+          values[key] = field.checked;
+
+          break;
+        }
+      }
     }
 
     await browser.runtime.sendMessage({

@@ -2,6 +2,10 @@ body {
   overflow: hidden;
 }
 
+.browser-style input[type="text"] {
+  width: 100%;
+}
+
 .panel-formElements-item {
   align-items: stretch;
   flex-direction: column;

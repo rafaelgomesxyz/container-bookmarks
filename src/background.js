@@ -1,10 +1,17 @@
 const info = {
   preferences: {
+    'show-popup': {
+      name: 'Show popup when creating a bookmark.',
+      defaultValue: true,
+      value: true,
+      type: 'checkbox',
+    },
     'redirect-key': {
-      name: 'Redirect Key',
+      name: 'Redirect Key:',
       description: 'The key that is used to trigger the redirect. For example, the default redirect key is "container", which appends "#container-%name%" to the end of the original URL and makes "http://www.%name%.container/%original-url%" the redirect URL.',
       defaultValue: 'container',
       value: 'container',
+      type: 'text',
     },
   },
 };
@@ -12,7 +19,9 @@ const info = {
 let wasInternallyCreated = false;
 
 getPreferences().then(() => {
-  browser.bookmarks.onCreated.addListener(onBookmarkCreated);
+  if (info.preferences['show-popup'].value) {
+    browser.bookmarks.onCreated.addListener(onBookmarkCreated);
+  }
   browser.menus.onClicked.addListener(onMenuClicked);
   browser.webRequest.onBeforeRequest.addListener(onBeforeRequest, {
     urls: ['<all_urls>'],
@@ -87,6 +96,14 @@ async function onMessageReceived(message) {
       await browser.storage.sync.set(message.preferences);
 
       await getPreferences();
+
+      const hasListener = browser.bookmarks.onCreated.hasListener(onBookmarkCreated);
+
+      if (info.preferences['show-popup'].value && !hasListener) {
+        browser.bookmarks.onCreated.addListener(onBookmarkCreated);
+      } else if (!info.preferences['show-popup'].value && hasListener) {
+        browser.bookmarks.onCreated.removeListener(onBookmarkCreated);
+      }
 
       break;
     }
