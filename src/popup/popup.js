@@ -22,18 +22,29 @@ async function getInfo() {
       action: 'get-info',
     });
 
-    const title = info.isEdit ? 'Edit Container Bookmark' : 'New Container Bookmark';
+    let title = '';
+    if (info.bookmark.isFolder) {
+      title = 'Edit Container Folder';
+    } else if (info.bookmark.isEdit) {
+      title = 'Edit Container Bookmark';
+    } else {
+      title = 'New Container Bookmark';
+    }
     document.title = title;
     titleHeader.textContent = title;
 
-    nameField.value = info.name;
-    urlField.value = info.url;
+    nameField.value = info.bookmark.name;
+    if (info.bookmark.isFolder) {
+      urlField.setAttribute('disabled', 'true');
+    } else {
+      urlField.value = info.bookmark.url;
+    }
 
     addOptions(folderDropdown, info.folders);
     addOptions(containerDropdown, info.containers);
 
-    folderDropdown.value = info.parentId;
-    containerDropdown.value = info.containerId;
+    folderDropdown.value = info.bookmark.parentId;
+    containerDropdown.value = info.bookmark.containerId;
 
     onContainerDropdownChanged();
   } catch (error) {
@@ -62,7 +73,7 @@ async function onContainerDropdownChanged() {
   try {
     await browser.runtime.sendMessage({
       action: 'resize-window',
-      windowId: info.windowId,
+      windowId: info.bookmark.windowId,
       width: 375,
       height: height,
     });
@@ -74,10 +85,10 @@ async function onContainerDropdownChanged() {
 
 async function onCancelButtonClicked() {
   try {
-    if (!info.isEdit) {
+    if (!info.bookmark.isEdit) {
       await browser.runtime.sendMessage({
         action: 'remove-bookmark',
-        id: info.id,
+        id: info.bookmark.id,
       });
     }
 
@@ -90,26 +101,41 @@ async function onCancelButtonClicked() {
 
 async function onDoneButtonClicked() {
   try {
-    await browser.runtime.sendMessage({
-      action: 'add-bookmark',
-      id: info.id,
-      old: {
-        parentId: info.parentId,
-        title: info.name,
-        url: info.url,
-      },
-      new: {
-        parentId: folderDropdown.value,
-        title: nameField.value,
-        url: containerDropdown.value === 'none' ? urlField.value : `${urlField.value.replace(new RegExp(`#${info.preferences['redirect-key'].value}-(.*)`), '')}#${info.preferences['redirect-key'].value}-${containerDropdown.value}`,
-      },
-    });
+    if (info.bookmark.isFolder) {
+      for (const child of info.bookmark.children) {
+        await addBookmark(child, child.name, child.url, child.parentId, containerDropdown.value);
+      }
+    }
+    await addBookmark(info.bookmark, nameField.value, urlField.value, folderDropdown.value, containerDropdown.value);
 
     window.close();
   } catch (error) {
     console.log(error);
     window.alert('An error occurred when adding the bookmark. Check the console log for more info.');
   }
+}
+
+async function addBookmark(bookmarkInfo, title, url, parentId, containerId) {
+  const oldInfo =  {
+    parentId: bookmarkInfo.parentId,
+    title: bookmarkInfo.name,
+  };
+  const newInfo = {
+    parentId,
+    title,
+  };
+
+  if (!bookmarkInfo.isFolder) {
+    oldInfo.url = bookmarkInfo.url;
+    newInfo.url = containerId === 'none' ? url : `${url.replace(new RegExp(`#${info.preferences['redirect-key'].value}-(.*)`), '')}#${info.preferences['redirect-key'].value}-${containerId}`;
+  }
+
+  await browser.runtime.sendMessage({
+    action: 'add-bookmark',
+    id: bookmarkInfo.id,
+    old: oldInfo,
+    new: newInfo,
+  });
 }
 
 /**

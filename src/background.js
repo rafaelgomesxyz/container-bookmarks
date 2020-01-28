@@ -158,18 +158,42 @@ async function onMessageReceived(message) {
 async function onBookmarkCreated(id, bookmark, isEdit) {
   if (wasInternallyCreated) {
     wasInternallyCreated = false;
-  } else if (bookmark.type === 'bookmark') {
-    info.id = id;
-    info.name = bookmark.title;
-    info.url = bookmark.url;
-    info.parentId = bookmark.parentId;
+  } else if (bookmark.type === 'bookmark' || (bookmark.type === 'folder' && isEdit)) {
+    info.bookmark = {};
 
-    const matches = info.url.match(new RegExp(`#${info.preferences['redirect-key'].value}-(.*)`));
-    info.containerId = matches ? matches[1] : 'none';
+    info.bookmark.id = id;
+    info.bookmark.name = bookmark.title;
+    info.bookmark.url = bookmark.url || '';
+    info.bookmark.parentId = bookmark.parentId;
+    info.bookmark.children = [];
 
-    info.isEdit = isEdit;
+    info.bookmark.isFolder = bookmark.type === 'folder';
+    info.bookmark.isEdit = isEdit;
 
-    info.windowId = (await browser.windows.create({
+    if (info.bookmark.isFolder) {
+      const children = (await browser.bookmarks.getChildren(info.bookmark.id))
+        .filter(child => child.type === 'bookmark');
+      for (const child of children) {
+        info.bookmark.children.push({
+          id: child.id,
+          name: child.title,
+          url: child.url,
+          parentId: child.parentId,
+
+          isFolder: false,
+          isEdit: true,
+        });
+      }
+
+      if (info.bookmark.children.length > 0) {
+        info.bookmark.url = info.bookmark.children[0].url;
+      }
+    }
+
+    const matches = info.bookmark.url.match(new RegExp(`#${info.preferences['redirect-key'].value}-(.*)`));
+    info.bookmark.containerId = matches ? matches[1] : 'none';
+
+    info.bookmark.windowId = (await browser.windows.create({
       url: `${browser.runtime.getURL('./popup/popup.html')}`,
       type: 'popup',
       width: 375,
