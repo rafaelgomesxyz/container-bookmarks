@@ -181,8 +181,8 @@ async function onBookmarkCreated(id, bookmark, isEdit) {
     newBookmark.isFolder = bookmark.type === 'folder';
     newBookmark.isEdit = isEdit;
 
-    if (bookmark.isFolder) {
-      const children = (await browser.bookmarks.getChildren(bookmark.id))
+    if (newBookmark.isFolder) {
+      const children = (await browser.bookmarks.getChildren(newBookmark.id))
         .filter(child => child.type === 'bookmark');
       for (const child of children) {
         newBookmark.children.push({
@@ -201,7 +201,7 @@ async function onBookmarkCreated(id, bookmark, isEdit) {
       }
     }
 
-    const matches = bookmark.url.match(new RegExp(`#${info.preferences['redirect-key'].value}-(.*)`));
+    const matches = newBookmark.url.match(new RegExp(`#${info.preferences['redirect-key'].value}-(.*)`));
     newBookmark.containerId = matches ? matches[1] : 'none';
 
     newBookmark.windowId = (await browser.windows.create({
