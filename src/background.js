@@ -15,6 +15,7 @@ const info = {
     },
   },
 };
+const bookmarks = {};
 
 let wasInternallyCreated = false;
 
@@ -85,7 +86,13 @@ async function onMessageReceived(message) {
         });
       }
 
-      response = info;
+      const bookmark = bookmarks[message.id];
+      delete bookmarks[message.id];
+
+      response = {
+        ...info,
+        bookmark
+      };
 
       break;
     }
@@ -161,22 +168,23 @@ async function onBookmarkCreated(id, bookmark, isEdit) {
   if (wasInternallyCreated) {
     wasInternallyCreated = false;
   } else if (bookmark.type === 'bookmark' || (bookmark.type === 'folder' && isEdit)) {
-    info.bookmark = {};
+    const newBookmark = {};
+    bookmarks[id] = newBookmark;
 
-    info.bookmark.id = id;
-    info.bookmark.name = bookmark.title;
-    info.bookmark.url = bookmark.url || '';
-    info.bookmark.parentId = bookmark.parentId;
-    info.bookmark.children = [];
+    newBookmark.id = id;
+    newBookmark.name = bookmark.title;
+    newBookmark.url = bookmark.url || '';
+    newBookmark.parentId = bookmark.parentId;
+    newBookmark.children = [];
 
-    info.bookmark.isFolder = bookmark.type === 'folder';
-    info.bookmark.isEdit = isEdit;
+    newBookmark.isFolder = bookmark.type === 'folder';
+    newBookmark.isEdit = isEdit;
 
-    if (info.bookmark.isFolder) {
-      const children = (await browser.bookmarks.getChildren(info.bookmark.id))
+    if (bookmark.isFolder) {
+      const children = (await browser.bookmarks.getChildren(bookmark.id))
         .filter(child => child.type === 'bookmark');
       for (const child of children) {
-        info.bookmark.children.push({
+        newBookmark.children.push({
           id: child.id,
           name: child.title,
           url: child.url,
@@ -187,16 +195,16 @@ async function onBookmarkCreated(id, bookmark, isEdit) {
         });
       }
 
-      if (info.bookmark.children.length > 0) {
-        info.bookmark.url = info.bookmark.children[0].url;
+      if (newBookmark.children.length > 0) {
+        newBookmark.url = newBookmark.children[0].url;
       }
     }
 
-    const matches = info.bookmark.url.match(new RegExp(`#${info.preferences['redirect-key'].value}-(.*)`));
-    info.bookmark.containerId = matches ? matches[1] : 'none';
+    const matches = bookmark.url.match(new RegExp(`#${info.preferences['redirect-key'].value}-(.*)`));
+    newBookmark.containerId = matches ? matches[1] : 'none';
 
-    info.bookmark.windowId = (await browser.windows.create({
-      url: `${browser.runtime.getURL('./popup/popup.html')}`,
+    newBookmark.windowId = (await browser.windows.create({
+      url: `${browser.runtime.getURL('./popup/popup.html')}#${id}`,
       type: 'popup',
       width: 375,
       height: 350,
@@ -205,13 +213,19 @@ async function onBookmarkCreated(id, bookmark, isEdit) {
 }
 
 async function onBookmarkChanged(id, changeInfo) {
+  const bookmark = bookmarks[id];
+  if (bookmark) {
+    if ('title' in changeInfo)
+      bookmark.name = changeInfo.title;
+    if ('url' in changeInfo)
+      bookmark.url = changeInfo.url;
+  }
+
   const responded = await browser.runtime.sendMessage({
     action: 'check-popup-existence-for-bookmark',
     id
   });
-  if (!responded)
-    return;
-
+  if (responded) {
   const changes = {};
   if ('title' in changeInfo)
     changes.name = changeInfo.title;
@@ -222,16 +236,19 @@ async function onBookmarkChanged(id, changeInfo) {
     id,
     ...changes,
   });
+  }
 }
 
 async function onBookmarkMoved(id, moveInfo) {
+  const bookmark = bookmarks[id];
+  if (bookmark)
+    bookmark.parentId = moveInfo.parentId;
+
   const responded = await browser.runtime.sendMessage({
     action: 'check-popup-existence-for-bookmark',
     id
   });
-  if (!responded)
-    return;
-
+  if (responded) {
   const tree = await browser.bookmarks.getTree();
   const folders = [];
   for (const node of tree[0].children) {
@@ -246,6 +263,7 @@ async function onBookmarkMoved(id, moveInfo) {
     parentId: moveInfo.parentId,
     folders,
   });
+  }
 }
 
 async function onMenuClicked(menuInfo) {

@@ -19,8 +19,10 @@ getInfo();
 
 async function getInfo() {
   try {
+    const id = location.hash.replace(/^#/, '');
     info = await browser.runtime.sendMessage({
       action: 'get-info',
+      id
     });
 
     let title = '';
