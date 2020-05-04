@@ -226,16 +226,16 @@ async function onBookmarkChanged(id, changeInfo) {
     id
   });
   if (responded) {
-  const changes = {};
-  if ('title' in changeInfo)
-    changes.name = changeInfo.title;
-  if ('url' in changeInfo)
-    changes.url = changeInfo.url;
-  browser.runtime.sendMessage({
-    action: 'bookmark-changed',
-    id,
-    ...changes,
-  });
+    const changes = {};
+    if ('title' in changeInfo)
+      changes.name = changeInfo.title;
+    if ('url' in changeInfo)
+      changes.url = changeInfo.url;
+    browser.runtime.sendMessage({
+      action: 'bookmark-changed',
+      id,
+      ...changes,
+    });
   }
 }
 
@@ -249,20 +249,20 @@ async function onBookmarkMoved(id, moveInfo) {
     id
   });
   if (responded) {
-  const tree = await browser.bookmarks.getTree();
-  const folders = [];
-  for (const node of tree[0].children) {
-    const folder = getFolder(node);
-    if (folder) {
-      folders.push(folder);
+    const tree = await browser.bookmarks.getTree();
+    const folders = [];
+    for (const node of tree[0].children) {
+      const folder = getFolder(node);
+      if (folder) {
+        folders.push(folder);
+      }
     }
-  }
-  browser.runtime.sendMessage({
-    action: 'bookmark-moved',
-    id,
-    parentId: moveInfo.parentId,
-    folders,
-  });
+    browser.runtime.sendMessage({
+      action: 'bookmark-moved',
+      id,
+      parentId: moveInfo.parentId,
+      folders,
+    });
   }
 }
 
