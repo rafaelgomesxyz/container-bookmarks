@@ -167,6 +167,11 @@ function clearOptions(dropdown) {
 
 function onMessageReceived(message) {
   switch (message.action) {
+    case 'check-popup-existence-for-bookmark': {
+      if (message.id == info.bookmark.id)
+        return Promise.resolve(true);
+      break;
+    }
     case 'bookmark-changed': {
       if (message.id != info.bookmark.id)
         break;

@@ -204,7 +204,14 @@ async function onBookmarkCreated(id, bookmark, isEdit) {
   }
 }
 
-function onBookmarkChanged(id, changeInfo) {
+async function onBookmarkChanged(id, changeInfo) {
+  const responded = await browser.runtime.sendMessage({
+    action: 'check-popup-existence-for-bookmark',
+    id
+  });
+  if (!responded)
+    return;
+
   const changes = {};
   if ('title' in changeInfo)
     changes.name = changeInfo.title;
@@ -218,6 +225,13 @@ function onBookmarkChanged(id, changeInfo) {
 }
 
 async function onBookmarkMoved(id, moveInfo) {
+  const responded = await browser.runtime.sendMessage({
+    action: 'check-popup-existence-for-bookmark',
+    id
+  });
+  if (!responded)
+    return;
+
   const tree = await browser.bookmarks.getTree();
   const folders = [];
   for (const node of tree[0].children) {
