@@ -22,6 +22,8 @@ getPreferences().then(() => {
   if (info.preferences['show-popup'].value) {
     browser.bookmarks.onCreated.addListener(onBookmarkCreated);
   }
+  browser.bookmarks.onChanged.addListener(onBookmarkChanged);
+  browser.bookmarks.onMoved.addListener(onBookmarkMoved);
   browser.menus.onClicked.addListener(onMenuClicked);
   browser.webRequest.onBeforeRequest.addListener(onBeforeRequest, {
     urls: ['<all_urls>'],
@@ -200,6 +202,36 @@ async function onBookmarkCreated(id, bookmark, isEdit) {
       height: 350,
     })).id;
   }
+}
+
+function onBookmarkChanged(id, changeInfo) {
+  const changes = {};
+  if ('title' in changeInfo)
+    changes.name = changeInfo.title;
+  if ('url' in changeInfo)
+    changes.url = changeInfo.url;
+  browser.runtime.sendMessage({
+    action: 'bookmark-changed',
+    id,
+    ...changes,
+  });
+}
+
+async function onBookmarkMoved(id, moveInfo) {
+  const tree = await browser.bookmarks.getTree();
+  const folders = [];
+  for (const node of tree[0].children) {
+    const folder = getFolder(node);
+    if (folder) {
+      folders.push(folder);
+    }
+  }
+  browser.runtime.sendMessage({
+    action: 'bookmark-moved',
+    id,
+    parentId: moveInfo.parentId,
+    folders,
+  });
 }
 
 async function onMenuClicked(menuInfo) {
