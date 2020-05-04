@@ -67,32 +67,33 @@ async function onMessageReceived(message) {
     case 'get-info': {
       await getPreferences();
 
-      info.folders = [];
-      info.containers = [];
+      const currentFolders = [];
+      const currentContainers = [];
 
       const tree = await browser.bookmarks.getTree();
       for (const node of tree[0].children) {
         const folder = getFolder(node);
         if (folder) {
-          info.folders.push(folder);
+          currentFolders.push(folder);
         }
       }
 
       const containers = await browser.contextualIdentities.query({});
       for (const container of containers) {
-        info.containers.push({
+        currentContainers.push({
           id: getContainerId(container.name),
           name: container.name,
         });
       }
 
-      const bookmark = bookmarks[message.id];
-      delete bookmarks[message.id];
-
       response = {
         ...info,
-        bookmark
+        folders: currentFolders,
+        containers: currentContainers,
+        bookmark: bookmarks[message.id],
       };
+
+      delete bookmarks[message.id];
 
       break;
     }
