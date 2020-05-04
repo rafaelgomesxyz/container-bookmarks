@@ -13,13 +13,16 @@ const doneButton = document.getElementById('done-button');
 containerDropdown.addEventListener('change', onContainerDropdownChanged);
 cancelButton.addEventListener('click', onCancelButtonClicked);
 doneButton.addEventListener('click', onDoneButtonClicked);
+browser.runtime.onMessage.addListener(onMessageReceived);
 
 getInfo();
 
 async function getInfo() {
   try {
+    const id = location.hash.replace(/^#/, '');
     info = await browser.runtime.sendMessage({
       action: 'get-info',
+      id
     });
 
     let title = '';
@@ -153,6 +156,40 @@ function addOptions(dropdown, options, level = 0) {
 
     if (option.children && option.children.length > 0) {
       addOptions(dropdown, option.children, level + 2);
+    }
+  }
+}
+
+function clearOptions(dropdown) {
+  const range = document.createRange();
+  range.selectNodeContents(dropdown);
+  range.deleteContents;
+  range.detach();
+}
+
+function onMessageReceived(message) {
+  switch (message.action) {
+    case 'check-popup-existence-for-bookmark': {
+      if (message.id == info.bookmark.id)
+        return Promise.resolve(true);
+      break;
+    }
+    case 'bookmark-changed': {
+      if (message.id != info.bookmark.id)
+        break;
+      if ('name' in message)
+        nameField.value = info.bookmark.name = message.name;
+      if ('url' in message)
+        urlField.value = info.bookmark.url = message.url;
+      break;
+    }
+    case 'bookmark-moved': {
+      if (message.id != info.bookmark.id)
+        break;
+      clearOptions(folderDropdown);
+      addOptions(folderDropdown, info.folders = message.folders);
+      folderDropdown.value = info.bookmark.parentId = message.parentId;
+      break;
     }
   }
 }
