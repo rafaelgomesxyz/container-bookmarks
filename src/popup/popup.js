@@ -186,6 +186,7 @@ function onMessageReceived(message) {
     case 'bookmark-moved': {
       if (message.id != info.bookmark.id)
         break;
+      clearOptions(folderDropdown);
       addOptions(folderDropdown, info.folders = message.folders);
       folderDropdown.value = info.bookmark.parentId = message.parentId;
       break;
