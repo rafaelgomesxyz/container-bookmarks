@@ -1,5 +1,3 @@
-# NOTICE: This repository has been moved to GitLab. https://gitlab.com/rafaelgssa/container-bookmarks
-
 # Container Bookmarks
 
 A Firefox extension that allows you to open bookmarks in containers.
