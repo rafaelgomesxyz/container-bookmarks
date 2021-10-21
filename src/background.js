@@ -165,10 +165,8 @@ async function onMessageReceived(message) {
   return response;
 }
 
-async function onBookmarkCreated(id, bookmark, isEdit) {
-  if (wasInternallyCreated.has(id)) {
-    wasInternallyCreated.delete(id);
-  } else if (bookmark.type === 'bookmark' || (bookmark.type === 'folder' && isEdit)) {
+async function openPopup(id, bookmark, isEdit) {
+  if (bookmark.type === 'bookmark' || (bookmark.type === 'folder' && isEdit)) {
     const newBookmark = {};
     bookmarks[id] = newBookmark;
 
@@ -210,6 +208,14 @@ async function onBookmarkCreated(id, bookmark, isEdit) {
       width: 375,
       height: 350,
     })).id;
+  }
+}
+
+async function onBookmarkCreated(id, bookmark, isEdit) {
+  if (wasInternallyCreated.has(id)) {
+    wasInternallyCreated.delete(id);
+  } else {
+    openPopup(id, bookmark, isEdit);
   }
 }
 
@@ -270,7 +276,7 @@ async function onBookmarkMoved(id, moveInfo) {
 async function onMenuClicked(menuInfo) {
   if (menuInfo.menuItemId === 'edit-bookmark') {
     const bookmark = (await browser.bookmarks.get(menuInfo.bookmarkId))[0];
-    onBookmarkCreated(bookmark.id, bookmark, true);
+    openPopup(bookmark.id, bookmark, true);
   }
 }
 
