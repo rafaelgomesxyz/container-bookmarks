@@ -19,9 +19,12 @@ const bookmarks = {};
 
 const wasInternallyCreated = new Set();
 
+const createdBookmarks = new Map();
+
 getPreferences().then(() => {
+  browser.bookmarks.onCreated.addListener(onBookmarkCreated);
   if (info.preferences['show-popup'].value) {
-    browser.bookmarks.onCreated.addListener(onBookmarkCreated);
+    browser.bookmarks.onCreated.addListener(onBookmarkCreatedAndOpenPopup);
   }
   browser.bookmarks.onChanged.addListener(onBookmarkChanged);
   browser.bookmarks.onMoved.addListener(onBookmarkMoved);
@@ -86,11 +89,15 @@ async function onMessageReceived(message) {
         });
       }
 
+      const bookmark = bookmarks[message.id];
+      const matches = bookmark.url.match(new RegExp(`#${info.preferences['redirect-key'].value}-(.*)`));
+      bookmark.containerId = matches ? matches[1] : 'none';
+
       response = {
         ...info,
         folders: currentFolders,
         containers: currentContainers,
-        bookmark: bookmarks[message.id],
+        bookmark,
       };
 
       delete bookmarks[message.id];
@@ -107,12 +114,12 @@ async function onMessageReceived(message) {
 
       await getPreferences();
 
-      const hasListener = browser.bookmarks.onCreated.hasListener(onBookmarkCreated);
+      const hasListener = browser.bookmarks.onCreated.hasListener(onBookmarkCreatedAndOpenPopup);
 
       if (info.preferences['show-popup'].value && !hasListener) {
-        browser.bookmarks.onCreated.addListener(onBookmarkCreated);
+        browser.bookmarks.onCreated.addListener(onBookmarkCreatedAndOpenPopup);
       } else if (!info.preferences['show-popup'].value && hasListener) {
-        browser.bookmarks.onCreated.removeListener(onBookmarkCreated);
+        browser.bookmarks.onCreated.removeListener(onBookmarkCreatedAndOpenPopup);
       }
 
       break;
@@ -165,6 +172,95 @@ async function onMessageReceived(message) {
   return response;
 }
 
+async function getCurentContainers() {
+  const containers = await browser.contextualIdentities.query({});
+
+  const containersFromCookieStoreId = {};
+  for (const container of containers) {
+    containersFromCookieStoreId[container.cookieStoreId] = {
+      id: getContainerId(container.name),
+      name: container.name,
+    };
+  }
+  return containersFromCookieStoreId;
+}
+
+async function fillContainerFromTabs() {
+  const bookmarks = Object.fromEntries(createdBookmarks.entries());
+  createdBookmarks.clear();
+
+  const bookmarksFromUrl = {};
+  for (const bookmark of Object.values(bookmarks)) {
+    bookmarksFromUrl[bookmark.url] = [
+      ...(bookmarksFromUrl[bookmark.url] || []),
+      bookmark,
+    ];
+  }
+
+  const [highlightedTabs, currentContainersFromCookieStoreId] = await Promise.all([
+    browser.tabs.query({ highlighted: true }),
+    getCurentContainers(),
+  ]);
+
+  const tabsInWindow = {};
+  const tabUrlsInWindow = {};
+  for (const tab of highlightedTabs) {
+    tabsInWindow[tab.windowId] = [
+      ...(tabsInWindow[tab.windowId] || []),
+      tab,
+    ];
+    tabUrlsInWindow[tab.windowId] = [
+      ...(tabUrlsInWindow[tab.windowId] || []),
+      tab.url,
+    ];
+  }
+
+  const bookmarkUrls = Array.from(Object.values(bookmarks), bookmark => bookmark.url).sort().join('\n');
+  const tabsFromUrl = {};
+  for (const [windowId, tabUrls] of Object.entries(tabUrlsInWindow)) {
+    if (tabUrls.sort().join('\n') != bookmarkUrls)
+      continue;
+    for (const tab of tabsInWindow[windowId]) {
+      tabsFromUrl[tab.url] = [
+        ...(tabsFromUrl[tab.url] || []),
+        tab,
+      ];
+    }
+    break;
+  }
+
+  const redirectoKey = info.preferences['redirect-key'].value;
+  for (const [url, bookmarks] of Object.entries(bookmarksFromUrl)) {
+    const tabs = tabsFromUrl[url];
+    for (let i = 0, maxi = bookmarks.length; i < maxi; i++) {
+      const tab = tabs[i];
+      if (!tab.cookieStoreId || tab.cookieStoreId == 'firefox-default')
+        continue;
+
+      const bookmark = bookmarks[i];
+      const containerId = currentContainersFromCookieStoreId[tab.cookieStoreId].id;
+      const url = `${tab.url.replace(new RegExp(`#${redirectoKey}-(.*)`), '')}#${redirectoKey}-${containerId}`;
+      if (url == bookmark.url)
+        continue;
+
+      browser.bookmarks.update(bookmark.id, { url });
+    }
+  }
+}
+
+function reserveToFillContainerFromTabs() {
+  clearTimeout(reserveToFillContainerFromTabs.timer);
+  reserveToFillContainerFromTabs.timer = setTimeout(fillContainerFromTabs, 500);
+}
+reserveToFillContainerFromTabs.timer = null;
+
+function onBookmarkCreated(id, bookmark) {
+  if (bookmark.type != 'bookmark')
+    return;
+  createdBookmarks.set(id, bookmark);
+  reserveToFillContainerFromTabs();
+}
+
 async function openPopup(id, bookmark, isEdit) {
   if (bookmark.type === 'bookmark' || (bookmark.type === 'folder' && isEdit)) {
     const newBookmark = {};
@@ -211,7 +307,7 @@ async function openPopup(id, bookmark, isEdit) {
   }
 }
 
-async function onBookmarkCreated(id, bookmark, isEdit) {
+async function onBookmarkCreatedAndOpenPopup(id, bookmark, isEdit) {
   if (wasInternallyCreated.has(id)) {
     wasInternallyCreated.delete(id);
   } else {
@@ -220,6 +316,13 @@ async function onBookmarkCreated(id, bookmark, isEdit) {
 }
 
 async function onBookmarkChanged(id, changeInfo) {
+  if (createdBookmarks.has(id)) {
+    createdBookmarks.set(id, {
+      ...createdBookmarks[id],
+      ...changeInfo,
+    });
+  }
+
   const bookmark = bookmarks[id];
   if (bookmark) {
     if ('title' in changeInfo)
@@ -236,8 +339,11 @@ async function onBookmarkChanged(id, changeInfo) {
     const changes = {};
     if ('title' in changeInfo)
       changes.name = changeInfo.title;
-    if ('url' in changeInfo)
+    if ('url' in changeInfo) {
       changes.url = changeInfo.url;
+      const matches = changeInfo.url.match(new RegExp(`#${info.preferences['redirect-key'].value}-(.*)`));
+      changes.containerId = matches ? matches[1] : 'none';
+    }
     browser.runtime.sendMessage({
       action: 'bookmark-changed',
       id,
@@ -247,6 +353,9 @@ async function onBookmarkChanged(id, changeInfo) {
 }
 
 async function onBookmarkMoved(id, moveInfo) {
+  if (createdBookmarks.has(id))
+    createdBookmarks.get(id).parentId = moveInfo.parentId;
+
   const bookmark = bookmarks[id];
   if (bookmark)
     bookmark.parentId = moveInfo.parentId;
