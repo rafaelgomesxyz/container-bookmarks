@@ -178,12 +178,12 @@ function onMessageReceived(message) {
       if (message.id != bookmarkId)
         break;
       promisedInitialized.then(() => {
-      if ('name' in message)
-        nameField.value = info.bookmark.name = message.name;
-      if ('url' in message)
-        urlField.value = info.bookmark.url = message.url;
-      if ('containerId' in message)
-        containerDropdown.value = info.bookmark.containerId = message.containerId;
+        if ('name' in message)
+          nameField.value = info.bookmark.name = message.name;
+        if ('url' in message)
+          urlField.value = info.bookmark.url = message.url;
+        if ('containerId' in message)
+          containerDropdown.value = info.bookmark.containerId = message.containerId;
       });
       break;
     }
@@ -191,9 +191,9 @@ function onMessageReceived(message) {
       if (message.id != bookmarkId)
         break;
       promisedInitialized.then(() => {
-      clearOptions(folderDropdown);
-      addOptions(folderDropdown, info.folders = message.folders);
-      folderDropdown.value = info.bookmark.parentId = message.parentId;
+        clearOptions(folderDropdown);
+        addOptions(folderDropdown, info.folders = message.folders);
+        folderDropdown.value = info.bookmark.parentId = message.parentId;
       });
       break;
     }
