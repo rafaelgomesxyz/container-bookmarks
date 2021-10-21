@@ -17,7 +17,7 @@ const info = {
 };
 const bookmarks = {};
 
-let wasInternallyCreated = false;
+const wasInternallyCreated = new Set();
 
 getPreferences().then(() => {
   if (info.preferences['show-popup'].value) {
@@ -139,7 +139,7 @@ async function onMessageReceived(message) {
           });
         }
       } else {
-        wasInternallyCreated = true;
+        wasInternallyCreated.add(message.id);
 
         await browser.bookmarks.create({
           title: message.new.title,
@@ -166,8 +166,8 @@ async function onMessageReceived(message) {
 }
 
 async function onBookmarkCreated(id, bookmark, isEdit) {
-  if (wasInternallyCreated) {
-    wasInternallyCreated = false;
+  if (wasInternallyCreated.has(id)) {
+    wasInternallyCreated.delete(id);
   } else if (bookmark.type === 'bookmark' || (bookmark.type === 'folder' && isEdit)) {
     const newBookmark = {};
     bookmarks[id] = newBookmark;
