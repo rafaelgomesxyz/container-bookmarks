@@ -15,14 +15,14 @@ cancelButton.addEventListener('click', onCancelButtonClicked);
 doneButton.addEventListener('click', onDoneButtonClicked);
 browser.runtime.onMessage.addListener(onMessageReceived);
 
-getInfo();
+const bookmarkId = location.hash.replace(/^#/, '');
+const promisedInitialized = getInfo();
 
 async function getInfo() {
   try {
-    const id = location.hash.replace(/^#/, '');
     info = await browser.runtime.sendMessage({
       action: 'get-info',
-      id
+      id: bookmarkId,
     });
 
     let title = '';
@@ -170,25 +170,31 @@ function clearOptions(dropdown) {
 function onMessageReceived(message) {
   switch (message.action) {
     case 'check-popup-existence-for-bookmark': {
-      if (message.id == info.bookmark.id)
+      if (message.id == bookmarkId)
         return Promise.resolve(true);
       break;
     }
     case 'bookmark-changed': {
-      if (message.id != info.bookmark.id)
+      if (message.id != bookmarkId)
         break;
-      if ('name' in message)
-        nameField.value = info.bookmark.name = message.name;
-      if ('url' in message)
-        urlField.value = info.bookmark.url = message.url;
+      promisedInitialized.then(() => {
+        if ('name' in message)
+          nameField.value = info.bookmark.name = message.name;
+        if ('url' in message)
+          urlField.value = info.bookmark.url = message.url;
+        if ('containerId' in message)
+          containerDropdown.value = info.bookmark.containerId = message.containerId;
+      });
       break;
     }
     case 'bookmark-moved': {
-      if (message.id != info.bookmark.id)
+      if (message.id != bookmarkId)
         break;
-      clearOptions(folderDropdown);
-      addOptions(folderDropdown, info.folders = message.folders);
-      folderDropdown.value = info.bookmark.parentId = message.parentId;
+      promisedInitialized.then(() => {
+        clearOptions(folderDropdown);
+        addOptions(folderDropdown, info.folders = message.folders);
+        folderDropdown.value = info.bookmark.parentId = message.parentId;
+      });
       break;
     }
   }

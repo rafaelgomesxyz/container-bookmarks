@@ -51,5 +51,6 @@ bookmarks | Used to detect when a new bookmark was created, to remove and update
 contextualIdentities | Used to retrieve the names of your containers.
 menus | Used to create a context menu for bookmarks.
 storage | Used to save your preferences.
+tabs | Used to detect containers of tabs corresponding to created bookmarks.
 webRequest | Used to monitor your requests to search for container fragments.
 webRequestBlocking | Used to intercept and redirect requests with container fragments.

@@ -24,6 +24,7 @@
     "contextualIdentities",
     "menus",
     "storage",
+    "tabs",
     "webRequest",
     "webRequestBlocking"
   ],
