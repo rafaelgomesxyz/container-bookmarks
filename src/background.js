@@ -185,10 +185,19 @@ async function getCurentContainers() {
   return containersFromCookieStoreId;
 }
 
+// Set container for bookmarks created by the "Bookmark Tabs" command.
+// The command creates bookmarks from tabs and remain tabs multiselected,
+// thus we can map container tabs to created bookmarks if all these three
+// conditions are satisfied:
+//  1) Multiple bookmarks are created at a time.
+//  2) The number of highlighted tabs in a window equals to the number of
+//     created bookmarks.
+//  3) All URLs of highlighted tabs are same to the of created bookmarks.
 async function fillContainerFromTabs() {
   const bookmarks = Object.fromEntries(createdBookmarks.entries());
   createdBookmarks.clear();
 
+  // Step 1: Create [URL] => [bookmarks] map
   const bookmarksFromUrl = {};
   for (const bookmark of Object.values(bookmarks)) {
     bookmarksFromUrl[bookmark.url] = [
@@ -202,25 +211,23 @@ async function fillContainerFromTabs() {
     getCurentContainers(),
   ]);
 
+  // Step 2: Create [windowId] => [tabs] map and
   const tabsInWindow = {};
-  const tabUrlsInWindow = {};
   for (const tab of highlightedTabs) {
     tabsInWindow[tab.windowId] = [
       ...(tabsInWindow[tab.windowId] || []),
       tab,
     ];
-    tabUrlsInWindow[tab.windowId] = [
-      ...(tabUrlsInWindow[tab.windowId] || []),
-      tab.url,
-    ];
   }
 
+  // Step 3: Detect corresponding tabs based on URLs, and
+  // Step 4: Create [URL] => [tabs] map
   const bookmarkUrls = Array.from(Object.values(bookmarks), bookmark => bookmark.url).sort().join('\n');
   const tabsFromUrl = {};
-  for (const [windowId, tabUrls] of Object.entries(tabUrlsInWindow)) {
-    if (tabUrls.sort().join('\n') != bookmarkUrls)
+  for (const [windowId, tabs] of Object.entries(tabsInWindow)) {
+    if (tabs.map(tab => tab.url).sort().join('\n') != bookmarkUrls)
       continue;
-    for (const tab of tabsInWindow[windowId]) {
+    for (const tab of tabs) {
       tabsFromUrl[tab.url] = [
         ...(tabsFromUrl[tab.url] || []),
         tab,
@@ -229,6 +236,7 @@ async function fillContainerFromTabs() {
     break;
   }
 
+  // Finally map tabs to bookmarks based on their URL
   const redirectoKey = info.preferences['redirect-key'].value;
   for (const [url, bookmarks] of Object.entries(bookmarksFromUrl)) {
     const tabs = tabsFromUrl[url];
